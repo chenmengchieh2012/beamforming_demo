@@ -31,4 +31,8 @@ The goal of this project is for NCTU smart campus demo project.
 ### Change log:
 
 #### 2018/6/14
-First commit on this project
+First commit on this project.
+
+#### 2018/6/14 11:03
+Add the trasmittion header file.
+
