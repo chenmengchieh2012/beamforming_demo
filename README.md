@@ -16,17 +16,17 @@ The goal of this project is for NCTU smart campus demo project.
 
 ### To Be Done:
 - System design:
--- [ ] RSSI data collection
--- [ ] Central controling server
--- [ ] Flow of the system
+- [ ] RSSI data collection
+- [ ] Central controling server
+- [ ] Flow of the system
 - Protocol Design:
--- [ ] protocol header for WiGig bean selection
--- [ ] protocol header for WiGig to dontroling server.
+- [ ] protocol header for WiGig bean selection
+- [ ] protocol header for WiGig to dontroling server.
 - Exhausting Search:
--- [ ] Iteration for Tx to Rx
--- [ ] Iteration for Rx to Tx
+- [ ] Iteration for Tx to Rx
+- [ ] Iteration for Rx to Tx
 - Machine Learning:
--- [ ] Q learning
+- [ ] Q learning
 
 ### Change log:
 
