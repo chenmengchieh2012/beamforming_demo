@@ -86,17 +86,17 @@ void *Rx_exhaustive(void* ptr){
 		while(1){
 			WiGig_header* whptr = WiGig_create_header();
 			WiGig_set_sector(whptr,sector);
-			ML_SendRFStatusReq();
+			// ML_SendRFStatusReq();
 			int length;
 			status = ML_Receiver((uint8_t*)whptr, &length);
-			ML_DecodeRFStatusPacket((uint8_t*)whptr, &ML_RF_Record);
+			// ML_DecodeRFStatusPacket((uint8_t*)whptr, &ML_RF_Record);
 			if(status > 0){
 				sector = WiGig_get_sector(whptr);
 				if(flag[sector] == 0){
 					flag[sector] = 1;
 					flag_counter++;
 				}
-				fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
+				// fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
 				fprintf(stdout,"Sector: %d\n",WiGig_get_sector(whptr));
 				
 			}
