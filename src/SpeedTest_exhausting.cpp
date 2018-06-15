@@ -180,11 +180,13 @@ int main(int argc, char *argv[]){
 	if(mode == TX){
 
 		// void *ret;
+		fprintf(stdout,"TX\n");
 		pthread_create(&thread, NULL , Tx_exhaustive , NULL);
 		pthread_join( thread, NULL);
 
 	}else if (mode == RX){
 		// void *ret;
+		fprintf(stdout,"RX\n");
 		pthread_create(&thread, NULL , Rx_exhaustive , NULL );
 		pthread_join( thread, NULL);
 	}
