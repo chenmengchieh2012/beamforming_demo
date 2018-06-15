@@ -1,1 +1,2 @@
 WiGig_id:1
+Mode:Tx

@@ -2,13 +2,13 @@ CC = gcc
 CXX = g++
 TARGET = SpeedTest
 # TARGET_rf = $(TARGET)_rf_beenseletction
-TARGET_rf = $(TARGET)_rf
+TARGET_rf = $(TARGET)_exhausting
 CFLAG = -Wall
 
 RM = rm -rf
 
 LIBDIR += -L$(PWD)/lib
-HEADER += -I$(PWD)/include -I$(shell pwd)/include 
+HEADER += -I$(PWD)/include -I$(shell pwd)/include
 OBJ_DIR := obj
 LIBS += -lMrLoopBF -lusb-1.0 -lpthread
 FLAG = -DRF_STATUS
@@ -31,7 +31,7 @@ OBJ_FILES := $(addprefix obj/,$(notdir $(CXX_FILES:.cpp=.o)))
 
 all:$(TARGET_rf)
 
-$(TARGET_rf): $(OBJ_DIR)/$(TARGET_rf).o
+$(TARGET_rf): $(OBJ_DIR)/$(TARGET_rf).o $(OBJ_DIR)/transmit_header.o
 
 #ifeq ($(ML_ARCH),arm)
 #	@echo "build arm"
