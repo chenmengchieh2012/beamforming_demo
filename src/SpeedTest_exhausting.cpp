@@ -132,9 +132,6 @@ void *Rx_exhaustive(void* ptr){
 
 // key of transmit in config.txt
 #define KEY_TRANSMIT_MODE "Mode"
-#define VALUE_TX "Tx"
-#define VALUE_RX "Rx"
-
 
 #define MAX_KEY_LENGTH 64
 #define MAX_VALUE_LENGTH 64
@@ -152,25 +149,34 @@ int main(int argc, char *argv[]){
 
 	FILE* fp;
 
-	char key[MAX_KEY_LENGTH];
-	char value[MAX_VALUE_LENGTH];
+	char *key;
+	char line[MAX_KEY_LENGTH];
+	int value;
 
 	if((fp = fopen(CONFIG_FILE, "r")) == NULL){
+		printf("file not found");
 	    return NULL;
 	}
+	while(fscanf(fp,"%s\n", &line[0], &value) != EOF){
+		// printf("%s",line);
 
-	while(fscanf(fp,"%s:%s\n", &key[0], &value[0]) != EOF){
+		char *token;
+
+		token = strtok(line, ":");
+		key = token;		
+		token = strtok(NULL, ":");
+		value = atoi(token);
+
+
 		if(strcmp(key,KEY_TRANSMIT_MODE) == 0){
-			if(strcmp(value,VALUE_RX) == 0){
+			if(value == RX){
 				mode = RX;
-			}else if(strcmp(value,VALUE_TX) == 0){
+			}else if(value == TX){
 				mode = TX;
 			}
 		}
 		memset(key,0,MAX_KEY_LENGTH);
-		memset(value,0,MAX_KEY_LENGTH);
 	}
-
 	if(mode == TX){
 
 		// void *ret;

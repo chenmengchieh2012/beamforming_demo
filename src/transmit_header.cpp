@@ -13,15 +13,28 @@
 WiGig_header* WiGig_create_header(){
 	FILE* fp;
 
+
+
+	char *key;
+	char line[MAX_KEY_LENGTH];
+	int value;
+
 	if((fp = fopen(CONFIG_FILE, "r")) == NULL){
 	    return NULL;
 	}
 
-	char key[MAX_KEY_LENGTH];
-	int value;
+
 	WiGig_header* wiGig_header = (WiGig_header*) malloc(sizeof(WiGig_header));
 	
-	while(fscanf(fp,"%s:%d\n", &key[0], &value) != EOF){
+	while(fscanf(fp,"%s\n", &line[0], &value) != EOF){
+
+		char *token;
+
+		token = strtok(line, ":");
+		key = token;		
+		token = strtok(NULL, ":");
+		value = atoi(token);
+
 		if(strcmp(key,KEY_WIGIG_ID) == 0){
 			wiGig_header->WiGig_id = value;
 		}
