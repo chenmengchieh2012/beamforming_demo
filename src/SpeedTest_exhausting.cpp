@@ -60,7 +60,7 @@ void *Tx_exhaustive(void* ptr){
 
 		WiGig_free_header(whptr);
 
-		if(sector<=MAX_SECTOR){
+		if(sector<MAX_SECTOR){
 			sector++;
 		}else{
 			sector = MIN_SECTOR;
@@ -115,7 +115,7 @@ void *Rx_exhaustive(void* ptr){
 		}
 		
 
-		if(sector<=MAX_SECTOR){
+		if(sector<MAX_SECTOR){
 			sector++;
 		}else{
 			sector = MIN_SECTOR;
