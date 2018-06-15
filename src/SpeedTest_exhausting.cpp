@@ -87,7 +87,7 @@ void *Rx_exhaustive(void* ptr){
 			WiGig_header* whptr = WiGig_create_header();
 			WiGig_set_sector(whptr,sector);
 			// ML_SendRFStatusReq();
-			int length;
+			int length = sizeof(WiGig_header);
 			status = ML_Receiver((uint8_t*)whptr, &length);
 			// ML_DecodeRFStatusPacket((uint8_t*)whptr, &ML_RF_Record);
 			if(status > 0){
