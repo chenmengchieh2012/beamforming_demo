@@ -60,7 +60,7 @@ void *Tx_exhaustive(void* ptr){
 		WiGig_header* whptr = WiGig_create_header();
 		WiGig_set_sector(whptr,sector);
 		int length = sizeof(WiGig_header);
-		// fprintf(stdout,"sector: %d\n",sector);
+		fprintf(stdout,"sector: %d\n",sector);
 
 		unsigned char* buf = (unsigned char*) malloc(BUFSIZE * CHUNK  * sizeof(char));
 		if(buf == NULL && whptr == NULL){
@@ -120,15 +120,17 @@ void *Rx_exhaustive(void* ptr){
 
 			status = ML_Receiver(buf, &Rx_length);
 			memcpy(whptr,buf,length);
-			// ML_DecodeRFStatusPacket((uint8_t*)whptr, &ML_RF_Record);
+			
 			if(status > 0){
 				sector = WiGig_get_sector(whptr);
 				if(flag[sector] == 0){
 					flag[sector] = 1;
 					flag_counter++;
 				}
-				// fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
-				fprintf(stdout,"Sector: %d\n",WiGig_get_sector(whptr));
+				ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
+				fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
+				fprintf(stdout,"Tx Sector: %d\n",WiGig_get_sector(whptr));
+				fprintf(stdout,"Rx Sector: %d\n",WiGig_get_sector(whptr));
 				
 			}
 			free(whptr);
