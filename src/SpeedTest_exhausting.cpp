@@ -56,7 +56,7 @@ void *Tx_exhaustive(void* ptr){
 			return 0;
 		}
 		ML_SetTxSector(sector);
-		ML_SetSpeed(1);
+		ML_SetSpeed(7);
 		ML_HiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
 		WiGig_set_sector(whptr,sector);
@@ -98,7 +98,7 @@ void *Rx_exhaustive(void* ptr){
 			return 0;
 		}
 		ML_HiddenDebugMsg();
-		ML_SetSpeed(1);
+		ML_SetSpeed(7);
 		ML_SetRxSector(rx_sector);
 
 
@@ -133,8 +133,9 @@ void *Rx_exhaustive(void* ptr){
 					flag[tx_sector] = 1;
 					flag_counter++;
 				}
-				// ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
-				// fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
+				ML_SendRFStatusReq();
+				ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
+				fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
 				fprintf(stdout,"Tx Sector: %d\n",tx_sector);
 				fprintf(stdout,"Rx Sector: %d\n",rx_sector);
 				
