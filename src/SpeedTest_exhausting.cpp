@@ -56,10 +56,11 @@ void *Tx_exhaustive(void* ptr){
 			return 0;
 		}
 		ML_SetTxSector(sector);
+		ML_MLHiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
 		WiGig_set_sector(whptr,sector);
 		int length = sizeof(WiGig_header);
-		fprintf(stdout,"length: %d\n",length);
+		// fprintf(stdout,"sector: %d\n",sector);
 
 		unsigned char* buf = (unsigned char*) malloc(BUFSIZE * CHUNK  * sizeof(char));
 		if(buf == NULL && whptr == NULL){
@@ -93,6 +94,7 @@ void *Rx_exhaustive(void* ptr){
 		if(ML_Init() != 1){
 			return 0;
 		}
+		ML_MLHiddenDebugMsg();
 		ML_SetRxSector(sector);
 
 
