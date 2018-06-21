@@ -52,6 +52,9 @@ void *Tx_exhaustive(void* ptr){
 	//setting sector
 	int sector = MIN_SECTOR;
 	while(1){
+		if(ML_Init() != 1){
+			return 0;
+		}
 		ML_SetTxSector(sector);
 		WiGig_header* whptr = WiGig_create_header();
 		WiGig_set_sector(whptr,sector);
@@ -63,6 +66,8 @@ void *Tx_exhaustive(void* ptr){
 		memcpy(buf,whptr,length);
 
 		ML_Transfer(buf, BUFSIZE *CHUNK);
+
+		ML_Close();
 
 		WiGig_free_header(whptr);
 		free(buf);
@@ -82,6 +87,9 @@ void *Rx_exhaustive(void* ptr){
 	int sector = MIN_SECTOR,status;
 
 	while(1){
+		if(ML_Init() != 1){
+			return 0;
+		}
 		ML_SetRxSector(sector);
 
 
@@ -128,7 +136,7 @@ void *Rx_exhaustive(void* ptr){
 
 			
 		}
-		
+		ML_Close();
 
 		if(sector<MAX_SECTOR){
 			sector++;
@@ -158,9 +166,7 @@ pthread_t thread;
 
 int main(int argc, char *argv[]){
 	int mode = 0;
-	if(ML_Init() != 1){
-		return 0;
-	}
+
 
 	FILE* fp;
 
