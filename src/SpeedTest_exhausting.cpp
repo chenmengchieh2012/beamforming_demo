@@ -56,7 +56,7 @@ void *Tx_exhaustive(void* ptr){
 			return 0;
 		}
 		ML_SetTxSector(sector);
-		ML_SetSpeed(7);
+		ML_SetSpeed(2);
 		ML_HiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
 		WiGig_set_sector(whptr,sector);
@@ -98,7 +98,7 @@ void *Rx_exhaustive(void* ptr){
 			return 0;
 		}
 		ML_HiddenDebugMsg();
-		ML_SetSpeed(7);
+		ML_SetSpeed(2);
 		ML_SetRxSector(rx_sector);
 
 
