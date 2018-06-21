@@ -127,8 +127,8 @@ void *Rx_exhaustive(void* ptr){
 					flag[sector] = 1;
 					flag_counter++;
 				}
-				ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
-				fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
+				// ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
+				// fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
 				fprintf(stdout,"Tx Sector: %d\n",WiGig_get_sector(whptr));
 				fprintf(stdout,"Rx Sector: %d\n",WiGig_get_sector(whptr));
 				
