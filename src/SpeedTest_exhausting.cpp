@@ -88,14 +88,14 @@ void *Tx_exhaustive(void* ptr){
 
 void *Rx_exhaustive(void* ptr){
 	//setting sector
-	int sector = MIN_SECTOR,status;
+	int rx_sector = MIN_SECTOR,status;
 
 	while(1){
 		if(ML_Init() != 1){
 			return 0;
 		}
 		ML_HiddenDebugMsg();
-		ML_SetRxSector(sector);
+		ML_SetRxSector(rx_sector);
 
 
 		int flag[MAX_SECTOR] = {0};
@@ -106,7 +106,7 @@ void *Rx_exhaustive(void* ptr){
 
 		while(1){
 			WiGig_header* whptr = WiGig_create_header();
-			WiGig_set_sector(whptr,sector);
+			// WiGig_set_sector(whptr,sector);
 			// ML_SendRFStatusReq();
 			int length = sizeof(WiGig_header);
 
@@ -122,15 +122,16 @@ void *Rx_exhaustive(void* ptr){
 			memcpy(whptr,buf,length);
 			
 			if(status > 0){
-				sector = WiGig_get_sector(whptr);
-				if(flag[sector] == 0){
-					flag[sector] = 1;
+				int tx_sector;
+				tx_sector = WiGig_get_sector(whptr);
+				if(flag[tx_sector] == 0){
+					flag[tx_sector] = 1;
 					flag_counter++;
 				}
 				// ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
 				// fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
-				fprintf(stdout,"Tx Sector: %d\n",WiGig_get_sector(whptr));
-				fprintf(stdout,"Rx Sector: %d\n",WiGig_get_sector(whptr));
+				fprintf(stdout,"Tx Sector: %d\n",tx_sector);
+				fprintf(stdout,"Rx Sector: %d\n",rx_sector);
 				
 			}
 			free(whptr);
@@ -149,10 +150,10 @@ void *Rx_exhaustive(void* ptr){
 		}
 		ML_Close();
 
-		if(sector<MAX_SECTOR){
-			sector++;
+		if(rx_sector<MAX_SECTOR){
+			rx_sector++;
 		}else{
-			sector = MIN_SECTOR;
+			rx_sector = MIN_SECTOR;
 		}
 
 		
