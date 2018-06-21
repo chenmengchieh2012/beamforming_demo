@@ -56,7 +56,7 @@ void *Tx_exhaustive(void* ptr){
 			return 0;
 		}
 		ML_SetTxSector(sector);
-		ML_MLHiddenDebugMsg();
+		ML_HiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
 		WiGig_set_sector(whptr,sector);
 		int length = sizeof(WiGig_header);
