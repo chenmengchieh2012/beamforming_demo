@@ -26,7 +26,7 @@ WiGig_header* WiGig_create_header(){
 
 	WiGig_header* wiGig_header = (WiGig_header*) malloc(sizeof(WiGig_header));
 	
-	while(fscanf(fp,"%s\n", &line[0], &value) != EOF){
+	while(fscanf(fp,"%s\n", &line[0]) != EOF){
 
 		char *token;
 

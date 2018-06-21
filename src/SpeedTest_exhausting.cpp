@@ -96,10 +96,11 @@ void *Rx_exhaustive(void* ptr){
 			int length = sizeof(WiGig_header);
 
 			unsigned char* buf = (unsigned char*) malloc(BUFSIZE * CHUNK  * sizeof(char));
-			memset(buf, 0, BUFSIZE * CHUNK);
+			int Rx_length = BUFSIZE * CHUNK;
+			memset(buf, 0, Rx_length);
 			memcpy(buf,whptr,length);
 
-			status = ML_Receiver(buf, BUFSIZE * CHUNK);
+			status = ML_Receiver(buf, &Rx_length);
 			// ML_DecodeRFStatusPacket((uint8_t*)whptr, &ML_RF_Record);
 			if(status > 0){
 				sector = WiGig_get_sector(whptr);
@@ -166,9 +167,9 @@ int main(int argc, char *argv[]){
 
 	if((fp = fopen(CONFIG_FILE, "r")) == NULL){
 		printf("file not found");
-	    return NULL;
+	    return 0;
 	}
-	while(fscanf(fp,"%s\n", &line[0], &value) != EOF){
+	while(fscanf(fp,"%s\n", &line[0]) != EOF){
 		// printf("%s",line);
 
 		char *token;
