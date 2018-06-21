@@ -94,7 +94,7 @@ void *Rx_exhaustive(void* ptr){
 		if(ML_Init() != 1){
 			return 0;
 		}
-		ML_MLHiddenDebugMsg();
+		ML_HiddenDebugMsg();
 		ML_SetRxSector(sector);
 
 
