@@ -66,10 +66,10 @@ int WiGig_get_ID(WiGig_header* ptr){
 	return ptr->WiGig_id;
 }
 
-void WiGig_free_header(WiGig_header* ptr){
-	free(ptr);
-	return;
-}
+// void WiGig_free_header(WiGig_header* ptr){
+// 	free(ptr);
+// 	return;
+// }
 
 #ifdef UNITTEST
 

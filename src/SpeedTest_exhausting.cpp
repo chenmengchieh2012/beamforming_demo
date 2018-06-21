@@ -62,14 +62,17 @@ void *Tx_exhaustive(void* ptr){
 		fprintf(stdout,"length: %d\n",length);
 
 		unsigned char* buf = (unsigned char*) malloc(BUFSIZE * CHUNK  * sizeof(char));
+		if(buf == NULL && whptr == NULL){
+			ML_Close();
+			continue;
+		}
 		memset(buf, 0, BUFSIZE * CHUNK);
 		memcpy(buf,whptr,length);
 
 		ML_Transfer(buf, BUFSIZE *CHUNK);
-
 		ML_Close();
 
-		WiGig_free_header(whptr);
+		free(whptr);
 		free(buf);
 
 		if(sector<MAX_SECTOR){
@@ -105,12 +108,16 @@ void *Rx_exhaustive(void* ptr){
 			// ML_SendRFStatusReq();
 			int length = sizeof(WiGig_header);
 
-			unsigned char* buf = (unsigned char*) malloc(BUFSIZE * CHUNK  * sizeof(char));
+			uint8_t* buf = (uint8_t*) malloc(BUFSIZE * CHUNK);
 			int Rx_length = BUFSIZE * CHUNK;
-			memset(buf, 0, Rx_length);
-			memcpy(buf,whptr,length);
+
+			if(buf == NULL && whptr == NULL){
+				ML_Close();
+				continue;
+			}
 
 			status = ML_Receiver(buf, &Rx_length);
+			memcpy(whptr,buf,length);
 			// ML_DecodeRFStatusPacket((uint8_t*)whptr, &ML_RF_Record);
 			if(status > 0){
 				sector = WiGig_get_sector(whptr);
@@ -122,7 +129,7 @@ void *Rx_exhaustive(void* ptr){
 				fprintf(stdout,"Sector: %d\n",WiGig_get_sector(whptr));
 				
 			}
-			WiGig_free_header(whptr);
+			free(whptr);
 			free(buf);
 
 			tend = current_timestamp();
