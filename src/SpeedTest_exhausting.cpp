@@ -65,12 +65,14 @@ void *Tx_exhaustive(void* ptr){
 		ML_Transfer(buf, BUFSIZE *CHUNK);
 
 		WiGig_free_header(whptr);
+		free(buf);
 
 		if(sector<MAX_SECTOR){
 			sector++;
 		}else{
 			sector = MIN_SECTOR;
 		}
+		
 	}
 
 }
@@ -113,6 +115,7 @@ void *Rx_exhaustive(void* ptr){
 				
 			}
 			WiGig_free_header(whptr);
+			free(buf);
 
 			tend = current_timestamp();
 			if(tend - tstart > 1000){
