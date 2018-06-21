@@ -71,7 +71,9 @@ void *Tx_exhaustive(void* ptr){
 		memset(buf, 0, BUFSIZE * CHUNK);
 		memcpy(buf,whptr,length);
 
-		ML_Transfer(buf, BUFSIZE *CHUNK);
+		int status;
+		status = ML_Transfer(buf, BUFSIZE *CHUNK);
+		fprintf(stdout,"tx status: %d\n",status);
 		ML_Close();
 
 		free(whptr);
@@ -121,6 +123,7 @@ void *Rx_exhaustive(void* ptr){
 			}
 
 			status = ML_Receiver(buf, &Rx_length);
+			fprintf(stdout,"status: %d\n",status);
 			memcpy(whptr,buf,length);
 			
 			if(status > 0){
@@ -150,6 +153,7 @@ void *Rx_exhaustive(void* ptr){
 
 			
 		}
+		usleep(10000);
 		ML_Close();
 
 		if(rx_sector<MAX_SECTOR){
