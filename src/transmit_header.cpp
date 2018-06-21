@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "transmit_header.h"
 #define CONFIG_FILE "config.txt"
 #define MAX_KEY_LENGTH 64
@@ -17,7 +18,7 @@ WiGig_header* WiGig_create_header(){
 
 	char *key;
 	char line[MAX_KEY_LENGTH];
-	int value;
+	// int value;
 
 	if((fp = fopen(CONFIG_FILE, "r")) == NULL){
 	    return NULL;
@@ -33,18 +34,19 @@ WiGig_header* WiGig_create_header(){
 		token = strtok(line, ":");
 		key = token;		
 		token = strtok(NULL, ":");
-		value = atoi(token);
+		// value = atoi(token);
 
 		if(strcmp(key,KEY_WIGIG_ID) == 0){
-			wiGig_header->WiGig_id = value;
+			wiGig_header->WiGig_id = token[0];
 		}
 		memset(key,0,MAX_KEY_LENGTH);
 
 	}
+	fclose(fp);
 	return wiGig_header;
 }
 
-void WiGig_set_sector(WiGig_header* ptr, int sector){
+void WiGig_set_sector(WiGig_header* ptr, unsigned char sector){
 	if(ptr == NULL){
 		return;
 	}
@@ -52,14 +54,14 @@ void WiGig_set_sector(WiGig_header* ptr, int sector){
 	return;
 }
 
-int WiGig_get_sector(WiGig_header* ptr){
+unsigned char  WiGig_get_sector(WiGig_header* ptr){
 	if(ptr == NULL){
 		return 0;
 	}
 	return ptr->sector;
 }
 
-int WiGig_get_ID(WiGig_header* ptr){
+unsigned char  WiGig_get_ID(WiGig_header* ptr){
 	if(ptr == NULL){
 		return 0;
 	}
