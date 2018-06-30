@@ -21,6 +21,7 @@
 #include "transmit_header.h"
 
 #define BUFSIZE  4096
+#define TOPIC_SIZE 64
 // bool is_open, s_index = false, running = false;
 // unsigned char count = 0;
 // long bits;
@@ -34,7 +35,7 @@
 
 
 ML_RF_INF ML_RF_Record;
-char *myturn;
+char myturn[TOPIC_SIZE];
 
 typedef struct {
   char *Sub_Topic;
@@ -53,20 +54,6 @@ long long current_timestamp() {
     long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
     // printf("milliseconds: %lld\n", milliseconds);
     return milliseconds;
-}
-
-/* MQTT */
-void mqtt_pub(char *pubTopic){
-  char *command;
-  char cmd[] = "python test_pub.py";
-  if((command = (char*)malloc(strlen(cmd)+strlen(pubTopic)+1)) != NULL){
-      command[0] = '\0';
-      strcat(command,cmd);
-      strcat(command,pubTopic);
-  } else {
-      fprintf(stderr, "malloc failed!\n");
-  }
-  execl(command, (char*)0);
 }
 
 /* MQTT */
@@ -95,6 +82,19 @@ char* generate_command(char* cmd_item[],int command_length, int size){
   return command;
 }
 
+void mqtt_pub(char *pubTopic, char *serverIP){
+  char *command;
+  int command_length = strlen(SUB_SUBSCRIBE_EXEC_LANG)+ \
+                       strlen(SUB_SUBSCRIBE_EXEC_FILE)+ \
+                       strlen(serverIP)+ \
+                       strlen(pubTopic)+1;
+  char *command_item[] = {SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
+                          ,serverIP,pubTopic};
+  command = generate_command(command_item, command_length, 4);
+  execl(command, (char*)0);
+  free(command);
+}
+
 void* mqtt_sub(void *ptr){
   MQTT_INFO *MQTT_Info = (MQTT_INFO*)ptr;
   char *command;
@@ -114,35 +114,37 @@ void* mqtt_sub(void *ptr){
 
 /* checkfile */
 void *checkfile(void* ptr){
+  printf("[ checkfile ]\n");
   while(true){
     FILE* fp;
-    char line[64];
-    if((fp = fopen("isSwitched", "r")) == NULL){
+    char line[TOPIC_SIZE];
+    if((fp = fopen("isSwitched.txt", "r")) == NULL){
       printf("file not found");
-        return 0;
-    }
-    if(fscanf(fp,"%s\n", &line[0]) != EOF){
-      memcpy(myturn, line, sizeof(line));
+    }else if(fscanf(fp,"%s\n", line) != EOF){
+      printf("line : %s\n", line);
+      strcpy(myturn, line);
+      printf("myturn : %s\n", myturn);
     }
     fclose(fp);
-
-    FILE* fp2;
-    if((fp2 = fopen("isSwitched", "w")) == NULL){
-      printf("file not found");
+    if(myturn != 0){
+      FILE* fp2;
+      if((fp2 = fopen("isSwitched.txt", "w")) == NULL){
+        printf("file not found");
         return 0;
+      }
+      fclose(fp2);
     }
-    fclose(fp2);
   }
 }
 
 /* Tx_exhaustive */
-void *Tx_exhaustive(char *Pub_Topic){
+void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 	//setting sector
   int ischanged = 1;
 	int sector = MIN_SECTOR;
 	while(1){
 		if(ML_Init() != 1){
-			return 0;
+      exit(1);
 		}
 		ML_SetTxSector(sector);
 		ML_SetSpeed(2);
@@ -170,7 +172,7 @@ void *Tx_exhaustive(char *Pub_Topic){
 
     if(ischanged == MAX_SECTOR) {
 			/* change to dongle 2 */
-      mqtt_pub(Pub_Topic);
+      mqtt_pub(Pub_Topic, ServerIP);
       break;
 		}
 
@@ -282,6 +284,7 @@ int main(int argc, char *argv[]){
 	int mode = 0;
   char *Sub_Topic, *Pub_Topic, *ServerIP;
 	ML_Close();
+  memset(myturn, 0, TOPIC_SIZE);
 
 	FILE* fp;
 
@@ -344,15 +347,13 @@ int main(int argc, char *argv[]){
 		// void *ret;
 		fprintf(stdout,"TX\n");
 		pthread_create(&thread, NULL , checkfile , NULL);
-		pthread_join(thread, NULL);
-    myturn = strdup(Sub_Topic);
+    strcpy(myturn, Sub_Topic);
     while(true){
-      if(myturn == Sub_Topic){
-        memset(myturn,'\0',MAX_KEY_LENGTH);
-        Tx_exhaustive(Pub_Topic);
+      if(!strcmp(myturn, Sub_Topic)){
+        strcpy(myturn, "0");
+        Tx_exhaustive(Pub_Topic, ServerIP);
       }
     }
-    free(myturn);
 	}else if (mode == RX){
 		// void *ret;
 		// fprintf(stdout,"RX\n");
@@ -360,6 +361,7 @@ int main(int argc, char *argv[]){
 		pthread_join( thread, NULL);
 	}
   pthread_join(thread_mqtt, NULL);
+  pthread_join(thread, NULL);
   free(MQTT_Info);
 
 }

@@ -3,6 +3,8 @@
 import sys
 import paho.mqtt.client as mqtt
 
+ServerIP = "localhost"
+
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     client.subscribe(sys.argv[2])
