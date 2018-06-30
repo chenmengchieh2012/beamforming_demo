@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <mosquitto.h>
 
 #include "iconv.h"
 #include "pthread.h"
@@ -40,14 +41,45 @@ ML_RF_INF ML_RF_Record;
 #define MAX_SECTOR 10
 #define MIN_SECTOR 1
 
+/* current_timestamp */
 long long current_timestamp() {
-    struct timeval te; 
+    struct timeval te;
     gettimeofday(&te, NULL); // get current time
     long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
     // printf("milliseconds: %lld\n", milliseconds);
     return milliseconds;
 }
 
+/* MQTT */
+void mqtt_pub(char *Sub_Topic){
+  char *command;
+  char cmd[] = "python test_pub.py";
+  if((command = malloc(strlen(cmd)+strlen(Pub_Topic)+1)) != NULL){
+      command[0] = '\0';
+      strcat(command,cmd);
+      strcat(command,Pub_Topic);
+  } else {
+      fprintf(STDERR,"malloc failed!\n");
+  }
+  execl(command, (char*)0);
+}
+
+/* MQTT */
+void mqtt_sub(char *Sub_Topic, char *ServerIP){
+  char *command;
+  char cmd[] = "python test_sub.py";
+  if((command = malloc(strlen(cmd)+strlen(Sub_Topic)+strlen(ServerIP)+1)) != NULL){
+      command[0] = '\0';
+      strcat(command,cmd);
+      strcat(command,ServerIP);
+      strcat(command,Sub_Topic);
+  } else {
+      fprintf(STDERR,"malloc failed!\n");
+  }
+  system(command);
+}
+
+/* Tx_exhaustive */
 void *Tx_exhaustive(void* ptr){
 	//setting sector
 	int sector = MIN_SECTOR;
@@ -84,13 +116,15 @@ void *Tx_exhaustive(void* ptr){
 		}else{
 			sector = MIN_SECTOR;
 		}
-		
+
 	}
 
 }
 
+/* Rx_exhaustive */
 void *Rx_exhaustive(void* ptr){
 	//setting sector
+	int ischanged = 1;
 	int rx_sector = MIN_SECTOR,status;
 
 	while(1){
@@ -121,11 +155,11 @@ void *Rx_exhaustive(void* ptr){
 				ML_Close();
 				continue;
 			}
-
 			status = ML_Receiver(buf, &Rx_length);
+
 			fprintf(stdout,"status: %d\n",status);
 			memcpy(whptr,buf,length);
-			
+
 			if(status > 0){
 				int tx_sector;
 				tx_sector = WiGig_get_sector(whptr);
@@ -133,38 +167,39 @@ void *Rx_exhaustive(void* ptr){
 					flag[tx_sector] = 1;
 					flag_counter++;
 				}
-				ML_SendRFStatusReq();
-				ML_DecodeRFStatusPacket(buf, &ML_RF_Record);
+				ML_GetRFStatus(&ML_RF_Record);
 				fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
 				fprintf(stdout,"Tx Sector: %d\n",tx_sector);
 				fprintf(stdout,"Rx Sector: %d\n",rx_sector);
-				
+
 			}
 			free(whptr);
 			free(buf);
 
 			tend = current_timestamp();
-			if(tend - tstart > 1000){
+			if(tend - tstart > 1000){ // check if timeout
 				break;
 			}
 
 			if(flag_counter == 10){
 				break;
 			}
-
-			
 		}
-		usleep(10000);
+
 		ML_Close();
 
-		if(rx_sector<MAX_SECTOR){
+		if(ischanged == MAX_SECTOR) {
+			/* change to dongle 2 */
+      mqtt_pub();
+		}
+
+		if(rx_sector<MAX_SECTOR) {
 			rx_sector++;
 		}else{
 			rx_sector = MIN_SECTOR;
+			ischanged++;
 		}
 
-		
-		
 		fprintf(stdout,"chagne time: %ld\n",(tend-tstart));
 	}
 
@@ -182,10 +217,11 @@ void *Rx_exhaustive(void* ptr){
 #define RX 2
 
 pthread_t thread;
+char *Sub_Topic, *Pub_Topic, *ServerIP;
 
 int main(int argc, char *argv[]){
 	int mode = 0;
-
+	ML_Close();
 
 	FILE* fp;
 
@@ -198,15 +234,11 @@ int main(int argc, char *argv[]){
 	    return 0;
 	}
 	while(fscanf(fp,"%s\n", &line[0]) != EOF){
-		// printf("%s",line);
-
 		char *token;
-
 		token = strtok(line, ":");
-		key = token;		
+		key = token;
 		token = strtok(NULL, ":");
 		value = atoi(token);
-
 
 		if(strcmp(key,KEY_TRANSMIT_MODE) == 0){
 			if(value == RX){
@@ -214,9 +246,16 @@ int main(int argc, char *argv[]){
 			}else if(value == TX){
 				mode = TX;
 			}
-		}
+		}else if(strcmp(key,"Sub_Topic") == 0){
+      Sub_Topic = token;
+    }else if(strcmp(key,"Pub_Topic") == 0){
+      Pub_Topic = token;
+    }else if(strcmp(key,"ServerIP") == 0){
+      ServerIP = token;
+    }
 		memset(key,0,MAX_KEY_LENGTH);
 	}
+  mqtt_sub(ServerIP, Sub_Topic);
 	if(mode == TX){
 
 		// void *ret;
@@ -230,7 +269,7 @@ int main(int argc, char *argv[]){
 		pthread_create(&thread, NULL , Rx_exhaustive , NULL );
 		pthread_join( thread, NULL);
 	}
-	
+
 
 
 }
