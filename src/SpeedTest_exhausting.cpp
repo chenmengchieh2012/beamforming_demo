@@ -36,6 +36,11 @@
 ML_RF_INF ML_RF_Record;
 char *myturn;
 
+typedef struct {
+  char *Sub_Topic;
+  char *ServerIP;
+}MQTT_INFO;
+
 #define CHUNK 1
 
 #define MAX_SECTOR 10
@@ -65,7 +70,7 @@ void mqtt_pub(char *pubTopic){
 }
 
 /* MQTT */
-
+#define TERMINAL_CMD "gnome-terminal -x"
 #define SUB_SUBSCRIBE_EXEC_LANG "python"
 #define SUB_SUBSCRIBE_EXEC_FILE "src/test_sub.py"
 #define STRING_SPACE " "
@@ -90,18 +95,21 @@ char* generate_command(char* cmd_item[],int command_length, int size){
   return command;
 }
 
-void mqtt_sub(char *subTopic, char *serverIP){
+void* mqtt_sub(void *ptr){
+  MQTT_INFO *MQTT_Info = (MQTT_INFO*)ptr;
   char *command;
-  int command_length = strlen(SUB_SUBSCRIBE_EXEC_LANG)+ \
+  int command_length = strlen(TERMINAL_CMD)+ \
+                       strlen(SUB_SUBSCRIBE_EXEC_LANG)+ \
                        strlen(SUB_SUBSCRIBE_EXEC_FILE)+ \
-                       strlen(serverIP)+ \
-                       strlen(subTopic)+1;
-  char *command_item[] = {SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
-          ,serverIP,subTopic};
-  command = generate_command(command_item, command_length, 4);
+                       strlen(MQTT_Info->ServerIP)+ \
+                       strlen(MQTT_Info->Sub_Topic)+1;
+  char *command_item[] = {TERMINAL_CMD,SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
+          ,MQTT_Info->ServerIP,MQTT_Info->Sub_Topic};
+  command = generate_command(command_item, command_length, 5);
   printf("command : %s\n", command);
   system(command);
   free(command);
+  free(MQTT_Info);
 }
 
 /* checkfile */
@@ -163,6 +171,7 @@ void *Tx_exhaustive(char *Pub_Topic){
     if(ischanged == MAX_SECTOR) {
 			/* change to dongle 2 */
       mqtt_pub(Pub_Topic);
+      break;
 		}
 
 		if(sector<MAX_SECTOR){
@@ -171,9 +180,7 @@ void *Tx_exhaustive(char *Pub_Topic){
 			sector = MIN_SECTOR;
       ischanged++;
 		}
-
 	}
-
 }
 
 /* Rx_exhaustive */
@@ -326,26 +333,33 @@ int main(int argc, char *argv[]){
 #endif
 //----------------------------------------- s
 
-  mqtt_sub(Sub_Topic, ServerIP);
+  pthread_t thread_mqtt;
+  MQTT_INFO *MQTT_Info = (MQTT_INFO*)malloc(sizeof(MQTT_INFO));
+  MQTT_Info->Sub_Topic = Sub_Topic;
+  MQTT_Info->ServerIP = ServerIP;
+  pthread_create(&thread_mqtt, NULL, mqtt_sub, (void*)MQTT_Info);
+  // mqtt_sub(Sub_Topic, ServerIP);
 	if(mode == TX){
 
 		// void *ret;
-		// fprintf(stdout,"TX\n");
+		fprintf(stdout,"TX\n");
 		pthread_create(&thread, NULL , checkfile , NULL);
-		pthread_join( thread, NULL);
+		pthread_join(thread, NULL);
+    myturn = strdup(Sub_Topic);
     while(true){
       if(myturn == Sub_Topic){
         memset(myturn,'\0',MAX_KEY_LENGTH);
         Tx_exhaustive(Pub_Topic);
       }
     }
+    free(myturn);
 	}else if (mode == RX){
 		// void *ret;
 		// fprintf(stdout,"RX\n");
 		pthread_create(&thread, NULL , Rx_exhaustive , NULL );
 		pthread_join( thread, NULL);
 	}
-
-
+  pthread_join(thread_mqtt, NULL);
+  free(MQTT_Info);
 
 }

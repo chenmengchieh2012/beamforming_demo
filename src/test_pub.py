@@ -6,7 +6,7 @@ import paho.mqtt.client as mqtt
 ServerIP = "localhost"
 ServerPort = 1883
 SubscribeTopic = sys.argv[1]
-Message = "KW is faaaaaaat."
+Message = sys.argv[1]
 
 mqtt = mqtt.Client("test_pub")
 mqtt.connect(ServerIP, ServerPort)
