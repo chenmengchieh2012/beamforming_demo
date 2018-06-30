@@ -33,7 +33,7 @@
 
 
 ML_RF_INF ML_RF_Record;
-char *Sub_Topic, *Pub_Topic, *ServerIP;
+char *Sub_Topic, *Pub_Topic, *ServerIP, *myturn;
 
 #define CHUNK 1
 
@@ -76,6 +76,29 @@ void mqtt_sub(char *Sub_Topic, char *ServerIP){
       fprintf(stderr, "malloc failed!\n");
   }
   system(command);
+}
+
+/* checkfile */
+void *checkfile(void* ptr){
+  while(true){
+    FILE* fp;
+    char line[64];
+    if((fp = fopen("isSwitched", "r")) == NULL){
+      printf("file not found");
+        return 0;
+    }
+    if(fscanf(fp,"%s\n", &line[0]) != EOF){
+      memcpy(myturn, line, sizeof(line));
+    }
+    fclose(fp);
+
+    FILE* fp2;
+    if((fp2 = fopen("isSwitched", "w")) == NULL){
+      printf("file not found");
+        return 0;
+    }
+    fclose(fp2);
+  }
 }
 
 /* Tx_exhaustive */
@@ -253,17 +276,23 @@ int main(int argc, char *argv[]){
     }
 		memset(key,0,MAX_KEY_LENGTH);
 	}
+  fclose(fp);
   mqtt_sub(ServerIP, Sub_Topic);
 	if(mode == TX){
 
 		// void *ret;
-		fprintf(stdout,"TX\n");
-		pthread_create(&thread, NULL , Tx_exhaustive , NULL);
+		// fprintf(stdout,"TX\n");
+		pthread_create(&thread, NULL , checkfile , NULL);
 		pthread_join( thread, NULL);
-
+    while(true){
+      if(myturn == Sub_Topic){
+        memset(myturn,'\0',MAX_KEY_LENGTH);
+        Tx_exhaustive('\0');
+      }
+    }
 	}else if (mode == RX){
 		// void *ret;
-		fprintf(stdout,"RX\n");
+		// fprintf(stdout,"RX\n");
 		pthread_create(&thread, NULL , Rx_exhaustive , NULL );
 		pthread_join( thread, NULL);
 	}
