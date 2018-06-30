@@ -2,4 +2,4 @@ WiGig_id:1
 Mode:2
 Sub_Topic:a
 Pub_Topic:b
-ServerIP :192.168.100.4
+ServerIP:192.168.100.5

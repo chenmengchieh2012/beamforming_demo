@@ -9,7 +9,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <sys/time.h>
-#include <mosquitto.h>
 
 #include "iconv.h"
 #include "pthread.h"
@@ -34,9 +33,9 @@
 
 
 ML_RF_INF ML_RF_Record;
+char *Sub_Topic, *Pub_Topic, *ServerIP;
 
 #define CHUNK 1
-
 
 #define MAX_SECTOR 10
 #define MIN_SECTOR 1
@@ -51,15 +50,15 @@ long long current_timestamp() {
 }
 
 /* MQTT */
-void mqtt_pub(char *Sub_Topic){
+void mqtt_pub(char *Pub_Topic){
   char *command;
   char cmd[] = "python test_pub.py";
-  if((command = malloc(strlen(cmd)+strlen(Pub_Topic)+1)) != NULL){
+  if((command = (char*)malloc(strlen(cmd)+strlen(Pub_Topic)+1)) != NULL){
       command[0] = '\0';
       strcat(command,cmd);
       strcat(command,Pub_Topic);
   } else {
-      fprintf(STDERR,"malloc failed!\n");
+      fprintf(stderr, "malloc failed!\n");
   }
   execl(command, (char*)0);
 }
@@ -68,13 +67,13 @@ void mqtt_pub(char *Sub_Topic){
 void mqtt_sub(char *Sub_Topic, char *ServerIP){
   char *command;
   char cmd[] = "python test_sub.py";
-  if((command = malloc(strlen(cmd)+strlen(Sub_Topic)+strlen(ServerIP)+1)) != NULL){
+  if((command = (char*)malloc(strlen(cmd)+strlen(Sub_Topic)+strlen(ServerIP)+1)) != NULL){
       command[0] = '\0';
       strcat(command,cmd);
       strcat(command,ServerIP);
       strcat(command,Sub_Topic);
   } else {
-      fprintf(STDERR,"malloc failed!\n");
+      fprintf(stderr, "malloc failed!\n");
   }
   system(command);
 }
@@ -190,7 +189,7 @@ void *Rx_exhaustive(void* ptr){
 
 		if(ischanged == MAX_SECTOR) {
 			/* change to dongle 2 */
-      mqtt_pub();
+      mqtt_pub(Pub_Topic);
 		}
 
 		if(rx_sector<MAX_SECTOR) {
@@ -217,7 +216,6 @@ void *Rx_exhaustive(void* ptr){
 #define RX 2
 
 pthread_t thread;
-char *Sub_Topic, *Pub_Topic, *ServerIP;
 
 int main(int argc, char *argv[]){
 	int mode = 0;
