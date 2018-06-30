@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <assert.h>
 
 #include "iconv.h"
 #include "pthread.h"
@@ -33,7 +34,7 @@
 
 
 ML_RF_INF ML_RF_Record;
-char *Sub_Topic, *Pub_Topic, *ServerIP, *myturn;
+char *myturn;
 
 #define CHUNK 1
 
@@ -50,13 +51,13 @@ long long current_timestamp() {
 }
 
 /* MQTT */
-void mqtt_pub(char *Pub_Topic){
+void mqtt_pub(char *pubTopic){
   char *command;
   char cmd[] = "python test_pub.py";
-  if((command = (char*)malloc(strlen(cmd)+strlen(Pub_Topic)+1)) != NULL){
+  if((command = (char*)malloc(strlen(cmd)+strlen(pubTopic)+1)) != NULL){
       command[0] = '\0';
       strcat(command,cmd);
-      strcat(command,Pub_Topic);
+      strcat(command,pubTopic);
   } else {
       fprintf(stderr, "malloc failed!\n");
   }
@@ -64,18 +65,43 @@ void mqtt_pub(char *Pub_Topic){
 }
 
 /* MQTT */
-void mqtt_sub(char *Sub_Topic, char *ServerIP){
+
+#define SUB_SUBSCRIBE_EXEC_LANG "python"
+#define SUB_SUBSCRIBE_EXEC_FILE "src/test_sub.py"
+#define STRING_SPACE " "
+
+void add_command(char* command,char* item){
+  strcat(command,item);
+  strcat(command,STRING_SPACE);
+  return;
+}
+
+char* generate_command(char* cmd_item[],int command_length, int size){
   char *command;
-  char cmd[] = "python test_sub.py";
-  if((command = (char*)malloc(strlen(cmd)+strlen(Sub_Topic)+strlen(ServerIP)+1)) != NULL){
-      command[0] = '\0';
-      strcat(command,cmd);
-      strcat(command,ServerIP);
-      strcat(command,Sub_Topic);
-  } else {
+  int iter;
+  if((command = (char*)malloc(command_length*sizeof(char)+size)) != NULL){
+    command[0] = '\0';
+    for( iter=0 ; iter<size ; iter++){
+      add_command(command,cmd_item[iter]);
+    }
+  }else {
       fprintf(stderr, "malloc failed!\n");
   }
+  return command;
+}
+
+void mqtt_sub(char *subTopic, char *serverIP){
+  char *command;
+  int command_length = strlen(SUB_SUBSCRIBE_EXEC_LANG)+ \
+                       strlen(SUB_SUBSCRIBE_EXEC_FILE)+ \
+                       strlen(serverIP)+ \
+                       strlen(subTopic)+1;
+  char *command_item[] = {SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
+          ,serverIP,subTopic};
+  command = generate_command(command_item, command_length, 4);
+  printf("command : %s\n", command);
   system(command);
+  free(command);
 }
 
 /* checkfile */
@@ -102,8 +128,9 @@ void *checkfile(void* ptr){
 }
 
 /* Tx_exhaustive */
-void *Tx_exhaustive(void* ptr){
+void *Tx_exhaustive(char *Pub_Topic){
 	//setting sector
+  int ischanged = 1;
 	int sector = MIN_SECTOR;
 	while(1){
 		if(ML_Init() != 1){
@@ -133,10 +160,16 @@ void *Tx_exhaustive(void* ptr){
 		free(whptr);
 		free(buf);
 
+    if(ischanged == MAX_SECTOR) {
+			/* change to dongle 2 */
+      mqtt_pub(Pub_Topic);
+		}
+
 		if(sector<MAX_SECTOR){
 			sector++;
 		}else{
 			sector = MIN_SECTOR;
+      ischanged++;
 		}
 
 	}
@@ -146,7 +179,6 @@ void *Tx_exhaustive(void* ptr){
 /* Rx_exhaustive */
 void *Rx_exhaustive(void* ptr){
 	//setting sector
-	int ischanged = 1;
 	int rx_sector = MIN_SECTOR,status;
 
 	while(1){
@@ -210,16 +242,10 @@ void *Rx_exhaustive(void* ptr){
 
 		ML_Close();
 
-		if(ischanged == MAX_SECTOR) {
-			/* change to dongle 2 */
-      mqtt_pub(Pub_Topic);
-		}
-
 		if(rx_sector<MAX_SECTOR) {
 			rx_sector++;
 		}else{
 			rx_sector = MIN_SECTOR;
-			ischanged++;
 		}
 
 		fprintf(stdout,"chagne time: %ld\n",(tend-tstart));
@@ -231,6 +257,9 @@ void *Rx_exhaustive(void* ptr){
 
 // key of transmit in config.txt
 #define KEY_TRANSMIT_MODE "Mode"
+#define SUB_TOPIC "Sub_Topic"
+#define PUB_TOPIC "Pub_Topic"
+#define SERVERIP "ServerIP"
 
 #define MAX_KEY_LENGTH 64
 #define MAX_VALUE_LENGTH 64
@@ -238,10 +267,13 @@ void *Rx_exhaustive(void* ptr){
 #define TX 1
 #define RX 2
 
+// #define TEST
+
 pthread_t thread;
 
 int main(int argc, char *argv[]){
 	int mode = 0;
+  char *Sub_Topic, *Pub_Topic, *ServerIP;
 	ML_Close();
 
 	FILE* fp;
@@ -261,23 +293,40 @@ int main(int argc, char *argv[]){
 		token = strtok(NULL, ":");
 		value = atoi(token);
 
+    // printf("key : %s\n", key);
+    // printf("value : %s\n", token);
+
 		if(strcmp(key,KEY_TRANSMIT_MODE) == 0){
 			if(value == RX){
 				mode = RX;
 			}else if(value == TX){
 				mode = TX;
 			}
-		}else if(strcmp(key,"Sub_Topic") == 0){
-      Sub_Topic = token;
-    }else if(strcmp(key,"Pub_Topic") == 0){
-      Pub_Topic = token;
-    }else if(strcmp(key,"ServerIP") == 0){
-      ServerIP = token;
+		}else if(strcmp(key, SUB_TOPIC) == 0){
+      Sub_Topic = strdup(token);
+    }else if(strcmp(key, PUB_TOPIC) == 0){
+      Pub_Topic = strdup(token);
+    }else if(strcmp(key, SERVERIP) == 0){
+      ServerIP = strdup(token);
     }
 		memset(key,0,MAX_KEY_LENGTH);
 	}
   fclose(fp);
-  mqtt_sub(ServerIP, Sub_Topic);
+
+//-----------------------------------------
+//TEST
+#ifdef TEST
+  #define SUB_TOPIC_VALUE "a"
+  #define PUB_TOPIC_VALUE "b"
+  #define SERVERIP_VALUE "192.168.100.5"
+  assert(!strcmp(Sub_Topic,SUB_TOPIC_VALUE));
+  assert(!strcmp(Pub_Topic,PUB_TOPIC_VALUE));
+  assert(!strcmp(ServerIP,SERVERIP_VALUE));
+  exit(1);
+#endif
+//----------------------------------------- s
+
+  mqtt_sub(Sub_Topic, ServerIP);
 	if(mode == TX){
 
 		// void *ret;
@@ -287,7 +336,7 @@ int main(int argc, char *argv[]){
     while(true){
       if(myturn == Sub_Topic){
         memset(myturn,'\0',MAX_KEY_LENGTH);
-        Tx_exhaustive('\0');
+        Tx_exhaustive(Pub_Topic);
       }
     }
 	}else if (mode == RX){
