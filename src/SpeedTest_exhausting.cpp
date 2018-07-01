@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "iconv.h"
 #include "pthread.h"
@@ -47,6 +48,22 @@ typedef struct {
 #define MAX_SECTOR 10
 #define MIN_SECTOR 1
 
+// void Try_Catch(int (*handler)){
+//   // va_list = list;
+//   // int iter = 0;
+//   // va_start(list, size);
+//   // char *arg[size] = NULL;
+//   // for(iter = 0 ; iter < size ; size++){
+//   //   arg[iter] = va_arg(list, char*);
+//   // }
+//   // va_end(list);
+//   try{
+//     handler();  //------------------------------------> arg problem!!!
+//   }catch(char *e){
+//     fprintf(stderr, "%s\n", e);
+//   }
+// }
+
 /* current_timestamp */
 long long current_timestamp() {
     struct timeval te;
@@ -60,6 +77,7 @@ long long current_timestamp() {
 #define TERMINAL_CMD "gnome-terminal -x"
 #define SUB_SUBSCRIBE_EXEC_LANG "python"
 #define SUB_SUBSCRIBE_EXEC_FILE "src/test_sub.py"
+#define SUB_PUBLISH_EXEC_FILE "src/test_pub.py"
 #define STRING_SPACE " "
 
 void add_command(char* command,char* item){
@@ -85,13 +103,13 @@ char* generate_command(char* cmd_item[],int command_length, int size){
 void mqtt_pub(char *pubTopic, char *serverIP){
   char *command;
   int command_length = strlen(SUB_SUBSCRIBE_EXEC_LANG)+ \
-                       strlen(SUB_SUBSCRIBE_EXEC_FILE)+ \
+                       strlen(SUB_PUBLISH_EXEC_FILE)+ \
                        strlen(serverIP)+ \
                        strlen(pubTopic)+1;
-  char *command_item[] = {SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
+  char *command_item[] = {SUB_SUBSCRIBE_EXEC_LANG,SUB_PUBLISH_EXEC_FILE \
                           ,serverIP,pubTopic};
   command = generate_command(command_item, command_length, 4);
-  execl(command, (char*)0);
+  system(command);
   free(command);
 }
 
@@ -100,7 +118,7 @@ void* mqtt_sub(void *ptr){
   char *command;
   int command_length = strlen(TERMINAL_CMD)+ \
                        strlen(SUB_SUBSCRIBE_EXEC_LANG)+ \
-                       strlen(SUB_SUBSCRIBE_EXEC_FILE)+ \
+                       strlen(SUB_PUBLISH_EXEC_FILE)+ \
                        strlen(MQTT_Info->ServerIP)+ \
                        strlen(MQTT_Info->Sub_Topic)+1;
   char *command_item[] = {TERMINAL_CMD,SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
@@ -112,35 +130,43 @@ void* mqtt_sub(void *ptr){
   free(MQTT_Info);
 }
 
+void init_isSwitched_file(){
+  FILE* fp;
+  fp = fopen("isSwitched.txt", "w");
+  if(fp == NULL){
+    printf("file not found");
+  }
+  fclose(fp);
+}
+
 /* checkfile */
 void *checkfile(void* ptr){
+  char *topic = (char*)ptr;
   printf("[ checkfile ]\n");
+  char line[TOPIC_SIZE];
   while(true){
     FILE* fp;
-    char line[TOPIC_SIZE];
     if((fp = fopen("isSwitched.txt", "r")) == NULL){
       printf("file not found");
-    }else if(fscanf(fp,"%s\n", line) != EOF){
-      printf("line : %s\n", line);
+    }else if(fscanf(fp,"%s\n", &line[0]) != EOF){
       strcpy(myturn, line);
-      printf("myturn : %s\n", myturn);
+      // fprintf(stdout, "myturn : %s\tSub_Topic : %s\nstrcmp = %d\n",\
+                        myturn, topic, strcmp(myturn, topic));
     }
     fclose(fp);
-    if(myturn != 0){
-      FILE* fp2;
-      if((fp2 = fopen("isSwitched.txt", "w")) == NULL){
-        printf("file not found");
-        return 0;
-      }
-      fclose(fp2);
+    if(!strcmp(myturn, topic)){
+      // fprintf(stdout, "[ get mqtt ]\n");
+      memset(myturn, 0, strlen(myturn));
+      init_isSwitched_file();
     }
+    memset(line,0,TOPIC_SIZE);
   }
 }
 
 /* Tx_exhaustive */
 void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 	//setting sector
-  int ischanged = 1;
+  int ischanged = 0;
 	int sector = MIN_SECTOR;
 	while(1){
 		if(ML_Init() != 1){
@@ -163,24 +189,25 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 		memcpy(buf,whptr,length);
 
 		int status;
-		status = ML_Transfer(buf, BUFSIZE *CHUNK);
+		status = ML_Transfer(buf, BUFSIZE * CHUNK);
 		fprintf(stdout,"tx status: %d\n",status);
 		ML_Close();
 
 		free(whptr);
 		free(buf);
 
-    if(ischanged == MAX_SECTOR) {
-			/* change to dongle 2 */
-      mqtt_pub(Pub_Topic, ServerIP);
-      break;
-		}
-
-		if(sector<MAX_SECTOR){
+		if(sector < MAX_SECTOR){
 			sector++;
-		}else{
+		}else if(sector == MAX_SECTOR){
 			sector = MIN_SECTOR;
       ischanged++;
+		}
+
+    if(ischanged == MAX_SECTOR) {
+			/* change to dongle 2 */
+      printf("[ switch ]\n");
+      mqtt_pub(Pub_Topic, ServerIP);
+      break;
 		}
 	}
 }
@@ -334,24 +361,27 @@ int main(int argc, char *argv[]){
   assert(!strcmp(ServerIP,SERVERIP_VALUE));
   exit(1);
 #endif
-//----------------------------------------- s
+//-----------------------------------------
 
+  init_isSwitched_file();
   pthread_t thread_mqtt;
   MQTT_INFO *MQTT_Info = (MQTT_INFO*)malloc(sizeof(MQTT_INFO));
   MQTT_Info->Sub_Topic = Sub_Topic;
   MQTT_Info->ServerIP = ServerIP;
   pthread_create(&thread_mqtt, NULL, mqtt_sub, (void*)MQTT_Info);
-  // mqtt_sub(Sub_Topic, ServerIP);
 	if(mode == TX){
 
 		// void *ret;
 		fprintf(stdout,"TX\n");
-		pthread_create(&thread, NULL , checkfile , NULL);
+    int iter_rounds = 1;
+		pthread_create(&thread, NULL , checkfile , (void*)Sub_Topic);
     strcpy(myturn, Sub_Topic);
     while(true){
       if(!strcmp(myturn, Sub_Topic)){
-        strcpy(myturn, "0");
+        memset(myturn, 0, strlen(myturn));
+        printf("==== [ Round %2d ] ====\n", iter_rounds);
         Tx_exhaustive(Pub_Topic, ServerIP);
+        iter_rounds++;
       }
     }
 	}else if (mode == RX){
@@ -363,5 +393,7 @@ int main(int argc, char *argv[]){
   pthread_join(thread_mqtt, NULL);
   pthread_join(thread, NULL);
   free(MQTT_Info);
-
+  free(Sub_Topic);
+  free(Pub_Topic);
+  free(ServerIP);
 }
