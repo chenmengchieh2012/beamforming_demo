@@ -23,17 +23,7 @@
 
 #define BUFSIZE  4096
 #define TOPIC_SIZE 64
-// bool is_open, s_index = false, running = false;
-// unsigned char count = 0;
-// long bits;
-
-// bool rx_rfstatus = false;
-
-// pthread_t thread;
-// pthread_t show_bitrate;
-// pthread_t getRFstatus;
-
-
+#define DEBUG(...) do { fprintf(stdout,__VA_ARGS__); fflush(stdout); } while (0)
 
 ML_RF_INF ML_RF_Record;
 char myturn[TOPIC_SIZE];
@@ -44,25 +34,20 @@ typedef struct {
 }MQTT_INFO;
 
 #define CHUNK 1
+#define ROUNDS 10
 
 #define MAX_SECTOR 10
 #define MIN_SECTOR 1
 
-// void Try_Catch(int (*handler)){
-//   // va_list = list;
-//   // int iter = 0;
-//   // va_start(list, size);
-//   // char *arg[size] = NULL;
-//   // for(iter = 0 ; iter < size ; size++){
-//   //   arg[iter] = va_arg(list, char*);
-//   // }
-//   // va_end(list);
-//   try{
-//     handler();  //------------------------------------> arg problem!!!
-//   }catch(char *e){
-//     fprintf(stderr, "%s\n", e);
-//   }
-// }
+void out_fmt(){
+  DEBUG("The output format : \n");
+  DEBUG("status\n");
+  DEBUG("RSSI(dBm)\n");
+  DEBUG("Tx Sector\n");
+  DEBUG("Rx Sector\n");
+  DEBUG("time cost\n");
+  DEBUG("---------\n");
+}
 
 /* current_timestamp */
 long long current_timestamp() {
@@ -106,8 +91,8 @@ void mqtt_pub(char *pubTopic, char *serverIP){
                        strlen(SUB_PUBLISH_EXEC_FILE)+ \
                        strlen(serverIP)+ \
                        strlen(pubTopic)+1;
-  char *command_item[] = {SUB_SUBSCRIBE_EXEC_LANG,SUB_PUBLISH_EXEC_FILE \
-                          ,serverIP,pubTopic};
+  char *command_item[] = {(char*)SUB_SUBSCRIBE_EXEC_LANG, (char*)SUB_PUBLISH_EXEC_FILE \
+                          , serverIP, pubTopic};
   command = generate_command(command_item, command_length, 4);
   system(command);
   free(command);
@@ -121,13 +106,14 @@ void* mqtt_sub(void *ptr){
                        strlen(SUB_PUBLISH_EXEC_FILE)+ \
                        strlen(MQTT_Info->ServerIP)+ \
                        strlen(MQTT_Info->Sub_Topic)+1;
-  char *command_item[] = {TERMINAL_CMD,SUB_SUBSCRIBE_EXEC_LANG,SUB_SUBSCRIBE_EXEC_FILE \
-          ,MQTT_Info->ServerIP,MQTT_Info->Sub_Topic};
+  char *command_item[] = {(char*)TERMINAL_CMD, (char*)SUB_SUBSCRIBE_EXEC_LANG ,(char*)SUB_SUBSCRIBE_EXEC_FILE \
+          , MQTT_Info->ServerIP, MQTT_Info->Sub_Topic};
   command = generate_command(command_item, command_length, 5);
   printf("command : %s\n", command);
   system(command);
   free(command);
   free(MQTT_Info);
+  return ((void *)0);
 }
 
 void init_isSwitched_file(){
@@ -150,24 +136,21 @@ void *checkfile(void* ptr){
       printf("file not found");
     }else if(fscanf(fp,"%s\n", &line[0]) != EOF){
       strcpy(myturn, line);
-      // fprintf(stdout, "myturn : %s\tSub_Topic : %s\nstrcmp = %d\n",\
-                        myturn, topic, strcmp(myturn, topic));
     }
     fclose(fp);
     if(!strcmp(myturn, topic)){
-      // fprintf(stdout, "[ get mqtt ]\n");
       memset(myturn, 0, strlen(myturn));
       init_isSwitched_file();
     }
     memset(line,0,TOPIC_SIZE);
   }
+  return ((void *)0);
 }
 
 /* Tx_exhaustive */
 void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
-	//setting sector
   int ischanged = 0;
-	int sector = MIN_SECTOR;
+	char sector = MIN_SECTOR, shift = 10;
 	while(1){
 		if(ML_Init() != 1){
       exit(1);
@@ -176,9 +159,9 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 		ML_SetSpeed(2);
 		ML_HiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
-		WiGig_set_sector(whptr,sector);
+		WiGig_set_sector(whptr,sector + shift);
 		int length = sizeof(WiGig_header);
-		fprintf(stdout,"sector: %d\n",sector);
+		DEBUG("sector: %d\n",sector);
 
 		unsigned char* buf = (unsigned char*) malloc(BUFSIZE * CHUNK  * sizeof(char));
 		if(buf == NULL && whptr == NULL){
@@ -190,7 +173,7 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 
 		int status;
 		status = ML_Transfer(buf, BUFSIZE * CHUNK);
-		fprintf(stdout,"tx status: %d\n",status);
+		DEBUG("tx status: %d\n",status);
 		ML_Close();
 
 		free(whptr);
@@ -203,9 +186,10 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
       ischanged++;
 		}
 
-    if(ischanged == MAX_SECTOR) {
+    if(ischanged == MAX_SECTOR * ROUNDS) {
 			/* change to dongle 2 */
       printf("[ switch ]\n");
+      usleep(100);
       mqtt_pub(Pub_Topic, ServerIP);
       break;
 		}
@@ -225,7 +209,6 @@ void *Rx_exhaustive(void* ptr){
 		ML_SetSpeed(2);
 		ML_SetRxSector(rx_sector);
 
-
 		int flag[MAX_SECTOR] = {0};
 		int flag_counter = 0;
 		long tstart,tend;
@@ -234,8 +217,6 @@ void *Rx_exhaustive(void* ptr){
 
 		while(1){
 			WiGig_header* whptr = WiGig_create_header();
-			// WiGig_set_sector(whptr,sector);
-			// ML_SendRFStatusReq();
 			int length = sizeof(WiGig_header);
 
 			uint8_t* buf = (uint8_t*) malloc(BUFSIZE * CHUNK);
@@ -246,8 +227,7 @@ void *Rx_exhaustive(void* ptr){
 				continue;
 			}
 			status = ML_Receiver(buf, &Rx_length);
-
-			fprintf(stdout,"status: %d\n",status);
+      DEBUG("status:%d\n",status);
 			memcpy(whptr,buf,length);
 
 			if(status > 0){
@@ -258,16 +238,19 @@ void *Rx_exhaustive(void* ptr){
 					flag_counter++;
 				}
 				ML_GetRFStatus(&ML_RF_Record);
-				fprintf(stdout,"RSSI(dBm): %d\n", ML_RF_Record.PHY_RSSI);
-				fprintf(stdout,"Tx Sector: %d\n",tx_sector);
-				fprintf(stdout,"Rx Sector: %d\n",rx_sector);
-
-			}
+        DEBUG("RSSI(dBm):%d\n", ML_RF_Record.PHY_RSSI);
+        DEBUG("Tx Sector:%d\n",tx_sector);
+        DEBUG("Rx Sector:%d\n",rx_sector);
+			}else{
+        DEBUG("RSSI(dBm):\n");
+        DEBUG("Tx Sector:\n");
+        DEBUG("Rx Sector:\n");
+      }
 			free(whptr);
 			free(buf);
 
 			tend = current_timestamp();
-			if(tend - tstart > 1000){ // check if timeout
+			if(tend - tstart > 1000){    // check if timeout
 				break;
 			}
 
@@ -284,9 +267,9 @@ void *Rx_exhaustive(void* ptr){
 			rx_sector = MIN_SECTOR;
 		}
 
-		fprintf(stdout,"chagne time: %ld\n",(tend-tstart));
+    DEBUG("The time cost of each Rx Sector:%ld\n",(tend-tstart));
 	}
-
+  return ((void *)0);
 }
 
 #define CONFIG_FILE "config.txt"
@@ -309,12 +292,11 @@ pthread_t thread;
 
 int main(int argc, char *argv[]){
 	int mode = 0;
-  char *Sub_Topic, *Pub_Topic, *ServerIP;
+  char *Sub_Topic = NULL, *Pub_Topic = NULL, *ServerIP = NULL;
 	ML_Close();
   memset(myturn, 0, TOPIC_SIZE);
-
-	FILE* fp;
-
+  
+  FILE* fp;
 	char *key;
 	char line[MAX_KEY_LENGTH];
 	int value;
@@ -329,9 +311,6 @@ int main(int argc, char *argv[]){
 		key = token;
 		token = strtok(NULL, ":");
 		value = atoi(token);
-
-    // printf("key : %s\n", key);
-    // printf("value : %s\n", token);
 
 		if(strcmp(key,KEY_TRANSMIT_MODE) == 0){
 			if(value == RX){
@@ -355,7 +334,7 @@ int main(int argc, char *argv[]){
 #ifdef TEST
   #define SUB_TOPIC_VALUE "a"
   #define PUB_TOPIC_VALUE "b"
-  #define SERVERIP_VALUE "192.168.100.5"
+  #define SERVERIP_VALUE "140.113.207.102"
   assert(!strcmp(Sub_Topic,SUB_TOPIC_VALUE));
   assert(!strcmp(Pub_Topic,PUB_TOPIC_VALUE));
   assert(!strcmp(ServerIP,SERVERIP_VALUE));
@@ -363,16 +342,14 @@ int main(int argc, char *argv[]){
 #endif
 //-----------------------------------------
 
-  init_isSwitched_file();
-  pthread_t thread_mqtt;
-  MQTT_INFO *MQTT_Info = (MQTT_INFO*)malloc(sizeof(MQTT_INFO));
-  MQTT_Info->Sub_Topic = Sub_Topic;
-  MQTT_Info->ServerIP = ServerIP;
-  pthread_create(&thread_mqtt, NULL, mqtt_sub, (void*)MQTT_Info);
 	if(mode == TX){
-
-		// void *ret;
-		fprintf(stdout,"TX\n");
+    init_isSwitched_file();
+    pthread_t thread_mqtt;
+    MQTT_INFO *MQTT_Info = (MQTT_INFO*)malloc(sizeof(MQTT_INFO));
+    MQTT_Info->Sub_Topic = Sub_Topic;
+    MQTT_Info->ServerIP = ServerIP;
+    pthread_create(&thread_mqtt, NULL, mqtt_sub, (void*)MQTT_Info);
+		DEBUG("TX\n");
     int iter_rounds = 1;
 		pthread_create(&thread, NULL , checkfile , (void*)Sub_Topic);
     strcpy(myturn, Sub_Topic);
@@ -384,15 +361,13 @@ int main(int argc, char *argv[]){
         iter_rounds++;
       }
     }
+    pthread_join(thread_mqtt, NULL);
+    pthread_join(thread, NULL);
+    free(MQTT_Info);
 	}else if (mode == RX){
-		// void *ret;
-		// fprintf(stdout,"RX\n");
 		pthread_create(&thread, NULL , Rx_exhaustive , NULL );
 		pthread_join( thread, NULL);
 	}
-  pthread_join(thread_mqtt, NULL);
-  pthread_join(thread, NULL);
-  free(MQTT_Info);
   free(Sub_Topic);
   free(Pub_Topic);
   free(ServerIP);
