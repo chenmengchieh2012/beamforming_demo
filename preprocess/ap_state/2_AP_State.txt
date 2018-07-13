@@ -1,0 +1,10 @@
+   ed813-ThinkPad-X220  Infra  1     54 Mbit/s  92      ▂▄▆█  WEP       
+   ed813-X450VC         Infra  1     54 Mbit/s  82      ▂▄▆█  WEP       
+   ed813-ThinkPad-X220  Infra  1     54 Mbit/s  90      ▂▄▆█  WEP       
+   ed813-X450VC         Infra  1     54 Mbit/s  84      ▂▄▆█  WEP       
+   ed813-ThinkPad-X220  Infra  1     54 Mbit/s  89      ▂▄▆█  WEP       
+   ed813-X450VC         Infra  1     54 Mbit/s  80      ▂▄▆_  WEP       
+   ed813-ThinkPad-X220  Infra  1     54 Mbit/s  89      ▂▄▆█  WEP       
+   ed813-X450VC         Infra  1     54 Mbit/s  80      ▂▄▆_  WEP       
+   ed813-ThinkPad-X220  Infra  1     54 Mbit/s  85      ▂▄▆█  WEP       
+   ed813-X450VC         Infra  1     54 Mbit/s  80      ▂▄▆_  WEP       
