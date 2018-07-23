@@ -49,6 +49,16 @@ void out_fmt(){
   DEBUG("---------\n");
 }
 
+int _length(unsigned char* s,int size) {
+    int i = 0,iter=0;
+    for(iter=0;iter<size;iter++){
+      if(s[iter] != 0){
+        ++i;
+      }
+    }
+    return i;
+}
+
 /* current_timestamp */
 long long current_timestamp() {
     struct timeval te;
@@ -217,16 +227,31 @@ void *Rx_exhaustive(void* ptr){
 
 		while(1){
 			WiGig_header* whptr = WiGig_create_header();
+
 			int length = sizeof(WiGig_header);
 
 			uint8_t* buf = (uint8_t*) malloc(BUFSIZE * CHUNK);
-			int Rx_length = BUFSIZE * CHUNK;
+      memset(buf, 0, BUFSIZE*CHUNK);
+      int Rx_length = BUFSIZE * CHUNK;
 
 			if(buf == NULL && whptr == NULL){
 				ML_Close();
 				continue;
 			}
 			status = ML_Receiver(buf, &Rx_length);
+      fprintf(stdout,"message size : %d\n",_length(buf,BUFSIZE * CHUNK));
+      // if(status == 1 ){
+      //   ML_RF_INF Test_Out_Result;
+      //   ML_DecodeRFStatusPacket(buf, &Test_Out_Result);
+      //   fprintf(stdout,"MAC COUNTERS: \n");
+    	// 	fprintf(stdout,"Total Tx: %u\n", Test_Out_Result.MAC_Tx_Total);
+    	// 	fprintf(stdout,"Total Rx: %u\n", Test_Out_Result.MAC_Rx_Total);
+    	// 	fprintf(stdout,"Total Fail: %u\n", Test_Out_Result.MAC_Total_Fail);
+    	// 	fprintf(stdout,"Total Ack: %u\n", Test_Out_Result.MAC_Total_Ack);
+    	// 	fprintf(stdout,"Total Tx Done: %u\n\n", Test_Out_Result.MAC_Total_Tx_Done);
+      // }
+
+
       DEBUG("status:%d\n",status);
 			memcpy(whptr,buf,length);
 
@@ -295,7 +320,7 @@ int main(int argc, char *argv[]){
   char *Sub_Topic = NULL, *Pub_Topic = NULL, *ServerIP = NULL;
 	ML_Close();
   memset(myturn, 0, TOPIC_SIZE);
-  
+
   FILE* fp;
 	char *key;
 	char line[MAX_KEY_LENGTH];
