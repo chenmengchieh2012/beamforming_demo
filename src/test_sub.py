@@ -9,13 +9,21 @@ ServerIP = "localhost"
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     client.subscribe(sys.argv[2])
+    client.subscribe("optimal")
 
 def on_message(client, userdata, msg):
-    print("Topic : " + msg.topic + "\n\tmessage : " + str(msg.payload))
-    fd = open('isSwitched.txt', 'a')
-    fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    fd.write(str(msg.payload))
-    fd.close()
+    if msg.topic is "optimal":
+        if msg.payload < 11:
+            # write file
+            f = open('optimization.txt', 'w')
+            f.write(msg.payload)
+            f.close()
+    else:
+        print("Topic : " + msg.topic + "\n\tmessage : " + str(msg.payload))
+        fd = open('isSwitched.txt', 'a')
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fd.write(str(msg.payload))
+        fd.close()
 
 fd = open('isSwitched.txt', 'w')
 fd.close()

@@ -39,15 +39,17 @@ typedef struct {
 #define MAX_SECTOR 10
 #define MIN_SECTOR 1
 
-void out_fmt(){
-  DEBUG("The output format : \n");
-  DEBUG("status\n");
-  DEBUG("RSSI(dBm)\n");
-  DEBUG("Tx Sector\n");
-  DEBUG("Rx Sector\n");
-  DEBUG("time cost\n");
-  DEBUG("---------\n");
-}
+char max_sector, min_sector;
+
+// void out_fmt(){
+//   DEBUG("The output format : \n");
+//   DEBUG("status\n");
+//   DEBUG("RSSI(dBm)\n");
+//   DEBUG("Tx Sector\n");
+//   DEBUG("Rx Sector\n");
+//   DEBUG("time cost\n");
+//   DEBUG("---------\n");
+// }
 
 int _length(unsigned char* s,int size) {
     int i = 0,iter=0;
@@ -138,7 +140,7 @@ void init_isSwitched_file(){
 /* checkfile */
 void *checkfile(void* ptr){
   char *topic = (char*)ptr;
-  printf("[ checkfile ]\n");
+  // printf("[ checkfile ]\n");
   char line[TOPIC_SIZE];
   while(true){
     FILE* fp;
@@ -157,10 +159,25 @@ void *checkfile(void* ptr){
   return ((void *)0);
 }
 
+void* set_zoom(void* ptr){
+  char temp;
+  while(true){
+    FILE* f;
+    if((f = fopen("optimization.txt", "r")) == NULL){
+    }else if(fscanf(f, "%s\n", &temp) != EOF){
+        int central_sector = (int)temp;
+        max_sector = char(central_sector + 1);
+        min_sector = char(central_sector - 1);
+    }
+  }
+}
+
 /* Tx_exhaustive */
 void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
   int ischanged = 0;
-	char sector = MIN_SECTOR, shift = 10;
+  max_sector = MAX_SECTOR;
+  min_sector = MIN_SECTOR;
+	char sector = min_sector, shift = 10;
 	while(1){
 		if(ML_Init() != 1){
       exit(1);
@@ -169,7 +186,7 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 		ML_SetSpeed(2);
 		ML_HiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
-		WiGig_set_sector(whptr,sector + shift);
+		WiGig_set_sector(whptr,sector);
 		int length = sizeof(WiGig_header);
 		DEBUG("sector: %d\n",sector);
 
@@ -189,17 +206,17 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 		free(whptr);
 		free(buf);
 
-		if(sector < MAX_SECTOR){
+		if(sector < max_sector){
 			sector++;
-		}else if(sector == MAX_SECTOR){
+		}else if(sector == max_sector){
 			sector = MIN_SECTOR;
       ischanged++;
 		}
 
-    if(ischanged == MAX_SECTOR * ROUNDS) {
+    if(ischanged == max_sector * ROUNDS) {
 			/* change to dongle 2 */
       printf("[ switch ]\n");
-      usleep(100);
+      // usleep(100);
       mqtt_pub(Pub_Topic, ServerIP);
       break;
 		}
@@ -239,19 +256,6 @@ void *Rx_exhaustive(void* ptr){
 				continue;
 			}
 			status = ML_Receiver(buf, &Rx_length);
-      fprintf(stdout,"message size : %d\n",_length(buf,BUFSIZE * CHUNK));
-      // if(status == 1 ){
-      //   ML_RF_INF Test_Out_Result;
-      //   ML_DecodeRFStatusPacket(buf, &Test_Out_Result);
-      //   fprintf(stdout,"MAC COUNTERS: \n");
-    	// 	fprintf(stdout,"Total Tx: %u\n", Test_Out_Result.MAC_Tx_Total);
-    	// 	fprintf(stdout,"Total Rx: %u\n", Test_Out_Result.MAC_Rx_Total);
-    	// 	fprintf(stdout,"Total Fail: %u\n", Test_Out_Result.MAC_Total_Fail);
-    	// 	fprintf(stdout,"Total Ack: %u\n", Test_Out_Result.MAC_Total_Ack);
-    	// 	fprintf(stdout,"Total Tx Done: %u\n\n", Test_Out_Result.MAC_Total_Tx_Done);
-      // }
-
-
       DEBUG("status:%d\n",status);
 			memcpy(whptr,buf,length);
 
@@ -266,10 +270,11 @@ void *Rx_exhaustive(void* ptr){
         DEBUG("RSSI(dBm):%d\n", ML_RF_Record.PHY_RSSI);
         DEBUG("Tx Sector:%d\n",tx_sector);
         DEBUG("Rx Sector:%d\n",rx_sector);
+        fprintf(stdout,"message size : %d\n",_length(buf,BUFSIZE * CHUNK));
 			}else{
-        DEBUG("RSSI(dBm):\n");
-        DEBUG("Tx Sector:\n");
-        DEBUG("Rx Sector:\n");
+        // DEBUG("RSSI(dBm):\n");
+        // DEBUG("Tx Sector:\n");
+        // DEBUG("Rx Sector:\n");
       }
 			free(whptr);
 			free(buf);
@@ -292,7 +297,7 @@ void *Rx_exhaustive(void* ptr){
 			rx_sector = MIN_SECTOR;
 		}
 
-    DEBUG("The time cost of each Rx Sector:%ld\n",(tend-tstart));
+    // DEBUG("The time cost of each Rx Sector:%ld\n",(tend-tstart));
 	}
   return ((void *)0);
 }
@@ -356,23 +361,24 @@ int main(int argc, char *argv[]){
 
 //-----------------------------------------
 //TEST
-#ifdef TEST
-  #define SUB_TOPIC_VALUE "a"
-  #define PUB_TOPIC_VALUE "b"
-  #define SERVERIP_VALUE "140.113.207.102"
-  assert(!strcmp(Sub_Topic,SUB_TOPIC_VALUE));
-  assert(!strcmp(Pub_Topic,PUB_TOPIC_VALUE));
-  assert(!strcmp(ServerIP,SERVERIP_VALUE));
-  exit(1);
-#endif
+// #ifdef TEST
+//   #define SUB_TOPIC_VALUE "a"
+//   #define PUB_TOPIC_VALUE "b"
+//   #define SERVERIP_VALUE "140.113.207.102"
+//   assert(!strcmp(Sub_Topic,SUB_TOPIC_VALUE));
+//   assert(!strcmp(Pub_Topic,PUB_TOPIC_VALUE));
+//   assert(!strcmp(ServerIP,SERVERIP_VALUE));
+//   exit(1);
+// #endif
 //-----------------------------------------
 
 	if(mode == TX){
     init_isSwitched_file();
-    pthread_t thread_mqtt;
+    pthread_t thread_mqtt, thread_zoom;
     MQTT_INFO *MQTT_Info = (MQTT_INFO*)malloc(sizeof(MQTT_INFO));
     MQTT_Info->Sub_Topic = Sub_Topic;
     MQTT_Info->ServerIP = ServerIP;
+    pthread_create(&thread_zoom, NULL, set_zoom, NULL);
     pthread_create(&thread_mqtt, NULL, mqtt_sub, (void*)MQTT_Info);
 		DEBUG("TX\n");
     int iter_rounds = 1;
@@ -388,6 +394,7 @@ int main(int argc, char *argv[]){
     }
     pthread_join(thread_mqtt, NULL);
     pthread_join(thread, NULL);
+    pthread_join(thread_zoom, NULL);
     free(MQTT_Info);
 	}else if (mode == RX){
 		pthread_create(&thread, NULL , Rx_exhaustive , NULL );
