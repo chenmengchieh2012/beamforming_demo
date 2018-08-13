@@ -7,8 +7,9 @@
 # 7. trasmit the zoom range to the specific ap by RJ-45 to the ap
 
 
-import os, sys, glob, csv, math
+import os, sys, glob, csv, math, fcntl
 import numpy as np
+import paho.mqtt.client as mqtt
 
 def det_euclidean_distance(coordinate, obs_point):
     print("[ obs coordinate ]")
@@ -97,6 +98,8 @@ def get_zoom(filename):
     print("          \\")
     print("           \\")
     print("            " + str(Tx3))
+
+    return Tx1, Tx2, Tx3
 #
 #
 # def transmit_zoom():
@@ -104,9 +107,46 @@ def get_zoom(filename):
 #
 #
 
+# NQTT***
+def on_connect(client, userdata, flags, rc):
+    SubscribeTopic = "optimal"
+    print("Connected with result code " + str(rc))
+    client.subscribe(SubscribeTopic)
+
+def on_message(client, userdata, msg):
+    print("Topic : " + msg.topic + "\n\tmessage : " + str(msg.payload))
+
+def MQTT_SUB(mqtt_broker_ip):
+    ServerPort = 1883
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect(mqtt_broker_ip, ServerPort, 60)
+    client.loop_forever()
+
+def MQTT_PUB(mqtt_broker_ip, msg):
+    ServerIP = mqtt_broker_ip
+    ServerPort = 1883
+    SubscribeTopic = "optimal"
+    Message = msg
+
+    mqtt = mqtt.Client("test_pub")
+    mqtt.connect(ServerIP, ServerPort)
+    mqtt.publish(SubscribeTopic, Message)
+
+# NQTT***
+
+
+mqtt_broker_ip = "140.113.207.100"
+# ap2_ip = "140.113.207.102"
+
+MQTT_SUB(mqtt_broker_ip)
 
 test_file = "C:/Users/user/Desktop/preprocess/testing/test.csv"
-get_zoom(test_file)
+Tx1, Tx2, Tx3 = get_zoom(test_file)
+
+msg = Tx2
+MQTT_PUB(mqtt_broker_ip, msg)
 
 
 
