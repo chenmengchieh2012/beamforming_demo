@@ -1,5 +1,5 @@
 WiGig_id:1
-Mode:2
+Mode:1
 Sub_Topic:a
 Pub_Topic:b
 ServerIP:140.113.207.100
