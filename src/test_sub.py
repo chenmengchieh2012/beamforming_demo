@@ -12,14 +12,15 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("optimal")
 
 def on_message(client, userdata, msg):
-    if msg.topic is "optimal":
-        if msg.payload < 11:
-            # write file
-            f = open('optimization.txt', 'w')
-            f.write(msg.payload)
-            f.close()
+    print("Topic : " + msg.topic + "\n\tmessage : " + str(msg.payload))
+    # check the msg.payload if is specific beams use order
+    # then write file to use the specific beams
+    if msg.payload > 10:
+        # write file
+        f = open('optimization.txt', 'w')
+        f.write(msg.payload)
+        f.close()
     else:
-        print("Topic : " + msg.topic + "\n\tmessage : " + str(msg.payload))
         fd = open('isSwitched.txt', 'a')
         fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         fd.write(str(msg.payload))

@@ -142,41 +142,44 @@ void *checkfile(void* ptr){
   char *topic = (char*)ptr;
   // printf("[ checkfile ]\n");
   char line[TOPIC_SIZE];
+  FILE* fp;
+  if((fp = fopen("isSwitched.txt", "r")) == NULL){
+    return ((void *) 0);
+  }
   while(true){
-    FILE* fp;
-    if((fp = fopen("isSwitched.txt", "r")) == NULL){
-      printf("file not found");
-    }else if(fscanf(fp,"%s\n", &line[0]) != EOF){
+
+    if(fscanf(fp,"%s\n", &line[0]) != EOF){
       strcpy(myturn, line);
     }
-    fclose(fp);
+
     if(!strcmp(myturn, topic)){
       memset(myturn, 0, strlen(myturn));
       init_isSwitched_file();
     }
     memset(line,0,TOPIC_SIZE);
   }
+  fclose(fp);
   return ((void *)0);
 }
 
 void* set_zoom(void* ptr){
   // DEBUG("zoom callback");
   char temp[8];
-  while(true){
-    FILE* f;
-    if((f = fopen("optimization.txt", "r")) == NULL){
-      //DEBUG("not change yet\n");
-    }else if(fscanf(f, "%s\n", &temp[0]) != EOF){
-        DEBUG("%s\n", temp[0]);
-        int central_sector = atoi(temp);
-        sprintf(&max_sector, "%d", central_sector + 1);
-        sprintf(&min_sector, "%d", central_sector - 1);
-        // max_sector = (char)(central_sector + 1);
-        // min_sector = (char)(central_sector - 1);
-        fclose(f);
-    }
-
+  FILE* f;
+  if((f = fopen("optimization.txt", "r")) == NULL){
+    // DEBUG("Not yet");
+    // fclose(f);
   }
+  while(true){
+    if(fscanf(f, "%s\n", &temp) != EOF){
+      int central_sector = atoi(temp);
+      DEBUG("%d\n", central_sector);
+      sprintf(&max_sector, "%d", central_sector + 1);
+      sprintf(&min_sector, "%d", central_sector - 1);
+      // fclose(f);
+    }
+  }
+  fclose(f);
 }
 
 /* Tx_exhaustive */
@@ -184,16 +187,18 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
   int ischanged = 0;
   max_sector = MAX_SECTOR;
   min_sector = MIN_SECTOR;
+  DEBUG("%d\n", max_sector);
 	char sector = min_sector, shift = 10;
 	while(1){
 		if(ML_Init() != 1){
       exit(1);
 		}
+    // DEBUG("set sector: %d",sector);
 		ML_SetTxSector(sector);
 		ML_SetSpeed(2);
 		ML_HiddenDebugMsg();
 		WiGig_header* whptr = WiGig_create_header();
-		WiGig_set_sector(whptr,sector);
+		WiGig_set_sector(whptr, sector + shift);
 		int length = sizeof(WiGig_header);
 		DEBUG("sector: %d\n",sector);
 
@@ -216,7 +221,7 @@ void Tx_exhaustive(char *Pub_Topic, char *ServerIP){
 		if(sector < max_sector){
 			sector++;
 		}else if(sector == max_sector){
-			sector = MIN_SECTOR;
+			sector = min_sector;
       ischanged++;
 		}
 
@@ -390,7 +395,7 @@ int main(int argc, char *argv[]){
 		DEBUG("TX\n");
     int iter_rounds = 1;
 		pthread_create(&thread, NULL , checkfile , (void*)Sub_Topic);
-    // strcpy(myturn, Sub_Topic);
+    strcpy(myturn, Sub_Topic);
     while(true){
       if(!strcmp(myturn, Sub_Topic)){
         memset(myturn, 0, strlen(myturn));
