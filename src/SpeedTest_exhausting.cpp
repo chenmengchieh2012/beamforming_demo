@@ -160,15 +160,22 @@ void *checkfile(void* ptr){
 }
 
 void* set_zoom(void* ptr){
-  char temp;
+  // DEBUG("zoom callback");
+  char temp[8];
   while(true){
     FILE* f;
     if((f = fopen("optimization.txt", "r")) == NULL){
-    }else if(fscanf(f, "%s\n", &temp) != EOF){
-        int central_sector = (int)temp;
-        max_sector = char(central_sector + 1);
-        min_sector = char(central_sector - 1);
+      //DEBUG("not change yet\n");
+    }else if(fscanf(f, "%s\n", &temp[0]) != EOF){
+        DEBUG("%s\n", temp[0]);
+        int central_sector = atoi(temp);
+        sprintf(&max_sector, "%d", central_sector + 1);
+        sprintf(&min_sector, "%d", central_sector - 1);
+        // max_sector = (char)(central_sector + 1);
+        // min_sector = (char)(central_sector - 1);
+        fclose(f);
     }
+
   }
 }
 
@@ -383,7 +390,7 @@ int main(int argc, char *argv[]){
 		DEBUG("TX\n");
     int iter_rounds = 1;
 		pthread_create(&thread, NULL , checkfile , (void*)Sub_Topic);
-    strcpy(myturn, Sub_Topic);
+    // strcpy(myturn, Sub_Topic);
     while(true){
       if(!strcmp(myturn, Sub_Topic)){
         memset(myturn, 0, strlen(myturn));
